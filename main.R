@@ -13,7 +13,7 @@ test <- read.csv("data/test.csv")
 str(train)
 str(test)
 
-# Delete unneccessary columns
+# Delete "unneccessary" columns; the name variable could be used to extract the title
 train <- train %>%
   dplyr::select(-PassengerId, -Name, -Ticket, -Cabin)
 test <- test %>%
@@ -27,22 +27,15 @@ test <- test %>%
   dplyr::mutate(Sex = as.factor(Sex),
          Embarked = as.factor(Embarked))
 
-# Transform integer variabbles that should better be factor variables
+# Transform integer variable Pclass to factor
 train <- train %>% 
   dplyr::mutate(Pclass = as.factor(Pclass))
 test <- test %>% 
   dplyr::mutate(Pclass = as.factor(Pclass))
 
-## Create new variables
-# Family size
+## Create new family size variable
 train$Family <- train$SibSp + train$Parch
 test$Family <- test$SibSp + test$Parch
-
-# # Drop SibSp and Parch
-# train <- train %>%
-#   dplyr::select(-SibSp, -Parch)
-# test <- test %>%
-#   dplyr::select(-SibSp, -Parch)
 
 # Randomly select 80% of the observations without replacement 
 set.seed(20)
@@ -62,6 +55,8 @@ xsell_test_matrix <-model.matrix(~.-1, data = test)
 dtrain <- xgb.DMatrix(data = xsell_training_matrix, label = training$Survived) 
 dvalid <- xgb.DMatrix(data = xsell_validation_matrix, label = validation$Survived)
 dtest <- xgb.DMatrix(data = xsell_test_matrix)
+
+?xgb.DMatrix
 
 # Base XGBoost model
 set.seed(20)
@@ -152,6 +147,13 @@ time.taken <- end.time - start.time
 time.taken
 
 write_csv(randomsearch, "data/randomsearch.csv")
+
+
+
+
+
+
+
 
 
 
