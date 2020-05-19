@@ -231,35 +231,5 @@ write_csv(datasubmission_tuned, "data/datasubmission_tuned.csv")
 
 
 
-
-# Set theme for plots
-mytheme <- theme(
-  ## plotregion
-  panel.background = element_rect(fill = "white",
-                                  colour = "white"),
-  panel.border = element_blank(),
-  panel.grid.major = element_line(size = 0.5, 
-                                  linetype = 'solid',
-                                  colour = "lightgrey"),
-  panel.grid.minor = element_blank(),
-  panel.spacing = unit(0.25, "lines"),
-  ## axis line
-  axis.line = element_line(colour = "black",
-                           size = 0.5, 
-                           linetype = "solid"),
-  ##background of fill
-  strip.background = element_rect(fill="#f2f2f2") +
-    scale_fill_discrete())
-
-# Evaluation
-public_leaderboard <- read_csv("data/titanic-publicleaderboard.csv")
-public_leaderboard <- as.data.frame(public_leaderboard) %>%
-  dplyr::select(Score) %>%
-  arrange(-Score)
-library(gghighlight)
-ggplot(public_leaderboard) + geom_histogram(aes(x=Score), binwidth = 0.001) + 
-  scale_x_continuous(limits=c(0.6,0.85)) +
-  mytheme +
-  gghighlight(Score > 0.7799)
   
 
