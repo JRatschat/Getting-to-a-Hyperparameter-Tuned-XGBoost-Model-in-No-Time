@@ -125,7 +125,7 @@ start.time <- Sys.time()
 lowest_error_list = list()
 parameters_list = list()
 
-# Create 100 rows with random hyperparameters
+# Create 10000 rows with random hyperparameters
 set.seed(20)
 for (iter in 1:10000){
   param <- list(booster = "gbtree",
