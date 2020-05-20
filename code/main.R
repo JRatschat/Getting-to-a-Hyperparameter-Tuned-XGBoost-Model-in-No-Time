@@ -108,6 +108,8 @@ confusionMatrix(validation$pred_survived_factor_base,
                 positive = "Survived", 
                 dnn = c("Prediction", "Actual Data"))
 
+xgb_base$evaluation_log
+
 # Test
 test$pred_survived_base <- predict(xgb_base, dtest)
 test$Survived <- factor(ifelse(test$pred_survived_base > 0.5, 1, 0))
@@ -127,7 +129,7 @@ parameters_list = list()
 
 # Create 100 rows with random hyperparameters
 set.seed(20)
-for (iter in 1:10000){
+for (iter in 1:10){
   param <- list(booster = "gbtree",
                 objective = "binary:logistic",
                 max_depth = sample(3:10, 1),
