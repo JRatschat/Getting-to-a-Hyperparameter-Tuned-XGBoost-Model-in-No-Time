@@ -6,6 +6,9 @@ library(xgboost)
 library(caret)
 library(ggplot2)
 library(cowplot)
+library(stargazer)
+library(missForest)
+library(randomForest)
 
 # Load data
 train <- read.csv("data/train.csv")
@@ -19,6 +22,8 @@ str(test)
 Survived <- train$Survived
 PassengerId <- test$PassengerId
 
+## Prepare and put data into one dataframe
+
 # Create new column that indicates if it the train or the test set
 train$Data <- "train"
 test$Data <- "test"
@@ -30,22 +35,52 @@ train <- train %>%
 # Bind rows to create a single data set
 total <- rbind(train, test)
 
-# Delete "unneccessary" columns; the name variable could be used to extract the title
+# Transform integer variable Pclass to factor
+total <- total %>% 
+  dplyr::mutate(Pclass = as.factor(Pclass))
+
+# Create new family size variable
+total$Fsize <- total$SibSp + total$Parch + 1
+
+# Discretize family size
+total$FsizeD[total$Fsize == 1] <- 'singleton'
+total$FsizeD[total$Fsize < 5 & total$Fsize > 1] <- 'small'
+total$FsizeD[total$Fsize > 4] <- 'large'
+
+# Title
+# https://trevorstephens.com/kaggle-titanic-tutorial/r-part-4-feature-engineering/
+total$Name <- as.character(total$Name)
+total$Title <- sapply(total$Name, FUN=function(x) {strsplit(x, split='[,.]')[[1]][2]})
+total$Title <- sub(' ', '', total$Title)
+total$Title[total$Title %in% c('Capt', 'Col', 'Don', 'Jonkheer', 'Major', 'Rev', 'Sir')] <- 'Mr'
+total$Title[total$Title %in% c('Mme', 'Dona', 'Lady', 'the Countess')] <- 'Mrs'
+total$Title[total$Title %in% c('Mme', 'Ms', 'Mlle')] <- 'Miss'
+total$Title <- factor(total$Title)
+
+# Create a Deck variable. Get passenger deck A - F:
+total$Deck <- factor(sapply(total$Cabin, function(x) strsplit(x, NULL)[[1]][1]))
+
+# Create the column child, and indicate whether child or adult
+total$Child[total$Age < 18] <- 'Child'
+total$Child[total$Age >= 18] <- 'Adult'
+
+# Adding Mother variable
+total$Mother <- 'Not Mother'
+total$Mother[total$Sex == 'female' & total$Parch > 0 & total$Age > 18 & total$Title != 'Miss'] <- 'Mother'
+
+
+
+
+
+# Delete "unneccessary" columns
 total <- total %>%
   dplyr::select(-PassengerId, -Name, -Ticket, -Cabin)
 
 # Transform all character variables into factor variables
 total <- total %>% 
   dplyr::mutate(Sex = as.factor(Sex),
-         Embarked = as.factor(Embarked),
-         Data = as.factor(Data))
-
-# Transform integer variable Pclass to factor
-total <- total %>% 
-  dplyr::mutate(Pclass = as.factor(Pclass))
-
-# Create new family size variable
-total$Family <- total$SibSp + total$Parch
+                Embarked = as.factor(Embarked),
+                Data = as.factor(Data))
 
 # Create one-hot coded matrix
 total_matrix <-model.matrix(~.-1, data = total)
@@ -111,10 +146,10 @@ confusionMatrix(validation$pred_survived_factor_base,
 # Test
 test$pred_survived_base <- predict(xgb_base, dtest)
 test$Survived <- factor(ifelse(test$pred_survived_base > 0.5, 1, 0))
-datasubmission_base<- cbind(as.data.frame(PassengerId), test$Survived)
-datasubmission_base <- datasubmission_base %>%
+test_final <- cbind(as.data.frame(PassengerId), test$Survived)
+test_final <- test_final %>%
   rename("Survived" = "test$Survived")
-write_csv(datasubmission_base, "data/datasubmission_base.csv")
+write_csv(test_final, "data/datasubmission_base.csv")
 
 ## Random search
 
@@ -125,9 +160,9 @@ start.time <- Sys.time()
 lowest_error_list = list()
 parameters_list = list()
 
-# Create 10000 rows with random hyperparameters
+# Create 100 rows with random hyperparameters
 set.seed(20)
-for (iter in 1:10000){
+for (iter in 1:100){
   param <- list(booster = "gbtree",
                 objective = "binary:logistic",
                 max_depth = sample(3:10, 1),
@@ -209,7 +244,7 @@ xgb_tuned <- xgb.train(params = params,
 # Make prediction on dvalid
 validation$pred_survived_tuned <- predict(xgb_tuned, dvalid)
 validation$pred_survived_factor_tuned <- factor(ifelse(validation$pred_survived_tuned > 0.5, 1, 0), 
-                                               labels=c("Not Survived","Survived"))
+                                                labels=c("Not Survived","Survived"))
 
 # Check accuracy with the confusion matrix
 confusionMatrix(validation$pred_survived_factor_tuned, 
@@ -221,15 +256,7 @@ confusionMatrix(validation$pred_survived_factor_tuned,
 # Test
 test$pred_survived_tuned <- predict(xgb_tuned, dtest)
 test$Survived <- factor(ifelse(test$pred_survived_tuned > 0.5, 1, 0))
-datasubmission_tuned <- cbind(as.data.frame(PassengerId), test$Survived)
-datasubmission_tuned <- datasubmission_tuned %>%
+test_final <- cbind(as.data.frame(PassengerId), test$Survived)
+test_final <- test_final %>%
   rename("Survived" = "test$Survived")
-write_csv(datasubmission_tuned, "data/datasubmission_tuned.csv")
-
-
-
-
-
-
-  
-
+write_csv(test_final, "data/datasubmission_tuned.csv")
